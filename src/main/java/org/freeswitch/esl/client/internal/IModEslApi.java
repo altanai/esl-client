@@ -72,3 +72,4 @@ public interface IModEslApi {
 
     CommandResponse cancelLogging();
 }
+

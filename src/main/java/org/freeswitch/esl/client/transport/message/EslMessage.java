@@ -1,23 +1,33 @@
 /*
  * Copyright 2010 david varnes.
  *
+<<<<<<< HEAD
  * Licensed under the Apache License, version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
+=======
+ * Licensed under the Apache License, version 2.0 (the "License"); 
+ * you may not use this file except in compliance with the License. 
+>>>>>>> 67fa4ece90c827803b84bff101189aa21416d6f3
  * You may obtain a copy of the License at:
  *
  *    http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
+<<<<<<< HEAD
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+=======
+ * distributed under the License is distributed on an "AS IS" BASIS, 
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
+>>>>>>> 67fa4ece90c827803b84bff101189aa21416d6f3
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
 package org.freeswitch.esl.client.transport.message;
 
 import org.freeswitch.esl.client.transport.message.EslHeaders.Name;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+//import org.slf4j.Logger;
+//import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -40,7 +50,8 @@ import static com.google.common.base.MoreObjects.toStringHelper;
  * @see EslHeaders.Name
  */
 public class EslMessage {
-    private final Logger log = LoggerFactory.getLogger(this.getClass());
+
+//    private final Logger log = LoggerFactory.getLogger(this.getClass());
 
     private final Map<Name, String> headers = new HashMap<>();
     private final List<String> body = new ArrayList<>();
@@ -123,7 +134,7 @@ public class EslMessage {
      * Used by the {@link EslFrameDecoder}.
      */
     void addHeader(Name name, String value) {
-        log.debug("adding header [{}] [{}]", name, value);
+		System.out.println(" [EslMessage] adding header [{}] [{}]"+ name + " "+ value);
         headers.put(name, value);
     }
 

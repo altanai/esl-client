@@ -1,15 +1,25 @@
 /*
  * Copyright 2010 david varnes.
  *
+<<<<<<< HEAD
  * Licensed under the Apache License, version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
+=======
+ * Licensed under the Apache License, version 2.0 (the "License"); 
+ * you may not use this file except in compliance with the License. 
+>>>>>>> 67fa4ece90c827803b84bff101189aa21416d6f3
  * You may obtain a copy of the License at:
  *
  *    http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
+<<<<<<< HEAD
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+=======
+ * distributed under the License is distributed on an "AS IS" BASIS, 
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
+>>>>>>> 67fa4ece90c827803b84bff101189aa21416d6f3
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -29,14 +39,24 @@ import io.netty.buffer.Unpooled;
 import io.netty.channel.embedded.EmbeddedChannel;
 import org.junit.Before;
 import org.junit.Test;
+<<<<<<< HEAD
 //import org.slf4j.Logger;
 //import org.slf4j.LoggerFactory;
+=======
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+>>>>>>> 67fa4ece90c827803b84bff101189aa21416d6f3
 
 
 public class EslFrameDecoderTest
 {
+<<<<<<< HEAD
 //    private final Logger log = LoggerFactory.getLogger( this.getClass() );
 
+=======
+    private final Logger log = LoggerFactory.getLogger( this.getClass() );
+    
+>>>>>>> 67fa4ece90c827803b84bff101189aa21416d6f3
     private EmbeddedChannel embedder;
 
     @Before
@@ -44,7 +64,11 @@ public class EslFrameDecoderTest
     {
         embedder = new EmbeddedChannel(new EslFrameDecoder(64));
     }
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 67fa4ece90c827803b84bff101189aa21416d6f3
     @Test
     public void simpleMessage() throws Exception
     {
@@ -52,17 +76,30 @@ public class EslFrameDecoderTest
         inputLines.add( "Content-Type: command/reply" );
         inputLines.add( "Reply-Text: +OK event listener enabled plain" );
         inputLines.add( "" );
+<<<<<<< HEAD
 
         embedder.writeInbound(createInputBuffer(inputLines, true));
         embedder.finish();
 
         EslMessage result = (EslMessage) embedder.readInbound();
 
+=======
+        
+        embedder.writeInbound(createInputBuffer(inputLines, true));
+        embedder.finish();
+        
+        EslMessage result = (EslMessage) embedder.readInbound();
+        
+>>>>>>> 67fa4ece90c827803b84bff101189aa21416d6f3
         assertNotNull( result );
         assertEquals( 2, result.getHeaders().size() );
         assertFalse( result.hasContentLength() );
     }
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 67fa4ece90c827803b84bff101189aa21416d6f3
     @Test
     public void simpleMessageWithContent() throws Exception
     {
@@ -78,18 +115,31 @@ public class EslFrameDecoderTest
         inputLines.add( "                   clinic  profile   sip:mod_sofia@yyy.yyy.yyy.yyy:5070    RUNNING (0)" );
         inputLines.add( "              192.168.1.1  alias                             internal  ALIASED" );
         inputLines.add( "=================================================================================================" );
+<<<<<<< HEAD
 
         embedder.writeInbound(createInputBuffer(inputLines, true));
 
         EslMessage result = (EslMessage) embedder.readInbound();
         embedder.finish();
 
+=======
+        
+        embedder.writeInbound(createInputBuffer(inputLines, true));
+        
+        EslMessage result = (EslMessage) embedder.readInbound();
+        embedder.finish();
+        
+>>>>>>> 67fa4ece90c827803b84bff101189aa21416d6f3
         assertNotNull( result );
         assertEquals( 2, result.getHeaders().size() );
         assertTrue( result.hasContentLength() );
         assertEquals( 8, result.getBodyLines().size() );
     }
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 67fa4ece90c827803b84bff101189aa21416d6f3
     @Test
     public void eventWithSecondContentLength()
     {
@@ -114,6 +164,7 @@ public class EslFrameDecoderTest
         inputLines.add( "Content-Length: 41" );
         inputLines.add( "" );
         inputLines.add( "+OK 7f4de4bc-17d7-11dd-b7a0-db4edd065621" );
+<<<<<<< HEAD
 
         embedder.writeInbound(createInputBuffer(inputLines, false));
 
@@ -124,17 +175,37 @@ public class EslFrameDecoderTest
         EslMessage result = (EslMessage) embedder.readInbound();
         embedder.finish();
 
+=======
+        
+        embedder.writeInbound(createInputBuffer(inputLines, false));
+
+        /*
+         *  NB .. there is no trailing '\n' in this event  
+         */
+        
+        EslMessage result = (EslMessage) embedder.readInbound();
+        embedder.finish();
+        
+>>>>>>> 67fa4ece90c827803b84bff101189aa21416d6f3
         assertNotNull( result );
         assertEquals( 2, result.getHeaders().size() );
         assertTrue( result.hasContentLength() );
         assertEquals( 17, result.getBodyLines().size() );
     }
 
+<<<<<<< HEAD
 
     private ByteBuf createInputBuffer( List<String> inputLines, boolean terminateLastLine )
     {
         ByteBuf buffer = Unpooled.buffer();
 
+=======
+    
+    private ByteBuf createInputBuffer( List<String> inputLines, boolean terminateLastLine )
+    {
+        ByteBuf buffer = Unpooled.buffer();
+        
+>>>>>>> 67fa4ece90c827803b84bff101189aa21416d6f3
         Iterator<String> it = inputLines.iterator();
         while ( it.hasNext() )
         {
@@ -145,9 +216,18 @@ public class EslFrameDecoderTest
                 buffer.writeByte( '\n' );
             }
         }
+<<<<<<< HEAD
 
         System.out.println("[EslFrameDecoderTest] Created buffer with [{}] bytes"+ buffer.writerIndex() );
 
         return buffer;
     }
 }
+=======
+        
+        log.debug( "Created buffer with [{}] bytes", buffer.writerIndex() );
+        
+        return buffer;
+    }
+}
+>>>>>>> 67fa4ece90c827803b84bff101189aa21416d6f3

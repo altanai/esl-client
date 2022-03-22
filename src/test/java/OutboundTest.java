@@ -8,20 +8,24 @@ import org.freeswitch.esl.client.outbound.IClientHandler;
 import org.freeswitch.esl.client.outbound.SocketClient;
 import org.freeswitch.esl.client.transport.event.EslEvent;
 import org.freeswitch.esl.client.transport.message.EslHeaders.Name;
+
 import org.freeswitch.esl.client.transport.message.EslMessage;
 //import org.slf4j.Logger;
 //import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
 import java.util.Date;
+
 import java.util.List;
 import java.util.Map;
 
 public class OutboundTest {
+
     //    private static final Logger logger = LoggerFactory.getLogger(OutboundTest.class);
     private static final String sb = "/usr/local/freeswitch/sounds/en/us/callie/ivr/8000/";
     String prompt = sb + "ivr-please_enter_extension_followed_by_pound.wav";
     String failed = sb + "ivr-that_was_an_invalid_entry.wav";
+
 
     public static void main(String[] args) {
         new OutboundTest();
@@ -34,10 +38,12 @@ public class OutboundTest {
             inboudClient.connect(new InetSocketAddress("localhost", 8021), "ClueCon", 10);
             inboudClient.addEventListener((ctx, event) -> System.out.println("INBOUND onEslEvent: {}" + event.getEventName()));
 
+
             final SocketClient outboundServer = new SocketClient(
                     new InetSocketAddress("localhost", 8084),
                     () -> new IClientHandler() {
                         @Override
+
                         public void onConnect(Context context, EslEvent eslEvent) {
 
                             System.out.println(nameMapToString(eslEvent.getMessageHeaders(), eslEvent.getEventBodyLines()));
@@ -64,9 +70,11 @@ public class OutboundTest {
 
                                 exe.say("en", "123456", "number", "pronounced");
 
+
                                 String digits = exe.playAndGetDigits(3,
                                         5, 10, 10 * 1000, "#", prompt,
                                         failed, "^\\d+", 10 * 1000);
+
                                 System.out.println("Digits collected: {}" + digits);
 
                                 // record
@@ -88,6 +96,7 @@ public class OutboundTest {
                         @Override
                         public void onEslEvent(Context ctx, EslEvent event) {
                             System.out.println("OUTBOUND onEslEvent: {}" + event.getEventName());
+
                         }
                     });
             outboundServer.startAsync();
@@ -128,3 +137,4 @@ public class OutboundTest {
         return sb.toString();
     }
 }
+

@@ -1,15 +1,25 @@
 /*
  * Copyright 2010 david varnes.
  *
+<<<<<<< HEAD
  * Licensed under the Apache License, version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
+=======
+ * Licensed under the Apache License, version 2.0 (the "License"); 
+ * you may not use this file except in compliance with the License. 
+>>>>>>> 67fa4ece90c827803b84bff101189aa21416d6f3
  * You may obtain a copy of the License at:
  *
  *    http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
+<<<<<<< HEAD
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+=======
+ * distributed under the License is distributed on an "AS IS" BASIS, 
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
+>>>>>>> 67fa4ece90c827803b84bff101189aa21416d6f3
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -19,6 +29,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class SendMsg {
+
     private final List<String> msgLines = new ArrayList<>();
     private final boolean hasUuid;
 

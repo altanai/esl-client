@@ -1,6 +1,5 @@
 package org.freeswitch.esl.client.inbound;
 
-
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
@@ -31,3 +30,4 @@ class InboundChannelInitializer extends ChannelInitializer<SocketChannel> {
         pipeline.addLast("encoder", new StringEncoder());
     }
 }
+
