@@ -48,34 +48,40 @@ public class OutboundTest {
 
                             System.out.println(nameMapToString(eslEvent.getMessageHeaders(), eslEvent.getEventBodyLines()));
 
-                            // transfer
-//                            EslMessage response = inboudClient.sendApiCommand("sofia_contact", "internal/1002@192.168.0.121");
-//                            System.out.println(response);
+
+                            //  System.out.println(eslEvent.getEventHeaders());
+                            // output in evenHeaders text file
 
                             String calleeNumber = eslEvent.getEventHeaders().get("Caller-Callee-ID-Number");
                             String callerNumber = eslEvent.getEventHeaders().get("Caller-Caller-ID-Number");
                             System.out.println("callerNumber：" + callerNumber + " , calleeNumber：" + calleeNumber);
 
-                            String uuid = eslEvent.getEventHeaders().get("unique-id");
-                            if (uuid.equalsIgnoreCase(""))
-                                uuid = "altanai4321";
+//                            String uuid = eslEvent.getEventHeaders().get("unique-id"); //
+                            String uuid = eslEvent.getEventHeaders().get("Unique-ID");
+//                            if (uuid.equalsIgnoreCase(""))
+//                                uuid = "altanai4321";
 
                             System.out.println("Creating execute app for uuid {}" + uuid);
                             Execute exe = new Execute(context, uuid);
                             try {
 
+                                // transfer
+//                                EslMessage response = inboudClient.sendApiCommand("sofia_contact", "internal/1002@192.168.0.121");
+//                                System.out.println(response);
+
+//                                exe.answer();
+//                                exe.echo(); // sets up echo
+
                                 long call_start = new Date().getTime();
-                                exe.answer();
                                 System.out.println("Call Answered " + call_start);
 
                                 exe.say("en", "123456", "number", "pronounced");
 
-
-                                String digits = exe.playAndGetDigits(3,
-                                        5, 10, 10 * 1000, "#", prompt,
-                                        failed, "^\\d+", 10 * 1000);
-
-                                System.out.println("Digits collected: {}" + digits);
+//                                String digits = exe.playAndGetDigits(3,
+//                                        5, 10, 10 * 1000, "#", prompt,
+//                                        failed, "^\\d+", 10 * 1000);
+//
+//                                System.out.println("Digits collected: {}" + digits);
 
                                 // record
 
@@ -95,8 +101,14 @@ public class OutboundTest {
 
                         @Override
                         public void onEslEvent(Context ctx, EslEvent event) {
-                            System.out.println("OUTBOUND onEslEvent: {}" + event.getEventName());
+                            String eventname=event.getEventName();
+                            System.out.println("OUTBOUND onEslEvent: {}" + eventname);
 
+                            if ("CHANNEL_HANGUP_COMPLETE" .equals(eventname)) {
+                                System.out.println( "Enter the on-hook completion event" );
+                                Map <String, String> dd = event.getEventHeaders();
+                                System.out.println( "variable_effective_caller_id_number is::::::" + dd.get("variable_effective_caller_id_number" ));
+                            }
                         }
                     });
             outboundServer.startAsync();

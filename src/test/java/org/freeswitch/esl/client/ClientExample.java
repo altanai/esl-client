@@ -1,7 +1,4 @@
-<<<<<<< HEAD
 
-=======
->>>>>>> 67fa4ece90c827803b84bff101189aa21416d6f3
 package org.freeswitch.esl.client;
 
 import com.google.common.base.Throwables;
