@@ -1,6 +1,4 @@
-
-esl-client
-==============================================================================
+##  Freeswitch esl-client in Java
 
 [![Travis](https://img.shields.io/travis/mgodave/esl-client.svg)](https://travis-ci.org/mgodave/esl-client)
 [![Maven Central](https://img.shields.io/maven-central/v/org.freeswitch.esl.client/org.freeswitch.esl.client.svg)](http://search.maven.org/#artifactdetails%7Corg.freeswitch.esl.client%7Corg.freeswitch.esl.client%7C0.9.2%7Cbundle)
@@ -8,14 +6,9 @@ esl-client
 **esl-client** is a Java-based Event Socket Library for the
 [FreeSWITCH](https://freeswitch.org/) project.
 
-This project is a fork of the unmaintained, original project at
-<https://freeswitch.org/stash/projects/FS/repos/freeswitch-contrib/browse/dvarnes/java/esl-client>
-
-Status: In Progress...
 
 
-Example
-------------------------------------------------------------------------------
+## Example
 
 ```java
 package com.ecovate.freeswitch.lb;
@@ -76,9 +69,16 @@ public class FreeSwitchEventListener {
 
 }
 ```
+# Modified and adapted 
 
-Authors
-------------------------------------------------------------------------------
+- [Altanai](https://www.linkedin.com/in/altanai/)
+
+# Authors
+
+This project is a fork of the unmaintained, original project at
+<https://freeswitch.org/stash/projects/FS/repos/freeswitch-contrib/browse/dvarnes/java/esl-client>
+
+Status: In Progress...
 
 - [Dan Cunningham](mailto:dan.cunningham@readytalk.com)
 - [Dave Rusek](mailto:dave.rusek@readytalk.com)
