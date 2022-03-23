@@ -1,25 +1,15 @@
 /*
  * Copyright 2010 david varnes.
  *
-<<<<<<< HEAD
  * Licensed under the Apache License, version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
-=======
- * Licensed under the Apache License, version 2.0 (the "License"); 
- * you may not use this file except in compliance with the License. 
->>>>>>> 67fa4ece90c827803b84bff101189aa21416d6f3
  * You may obtain a copy of the License at:
  *
  *    http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
-<<<<<<< HEAD
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-=======
- * distributed under the License is distributed on an "AS IS" BASIS, 
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
->>>>>>> 67fa4ece90c827803b84bff101189aa21416d6f3
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
@@ -27,16 +17,22 @@ package org.freeswitch.esl.client.transport.event;
 
 /**
  * Convenience container class for some commonly used ESL event header names (note there are many more!).
- * <p/>
+ * <p>
  * These names are stored as strings (rather than an Enum) so that there is no necessity to keep up to
  * date with changes or additions to event header names.
+ *
+ * @author  david varnes
  */
-public class EslEventHeaderNames {
-
+public class EslEventHeaderNames
+{
     /**
      * {@code "Event-Name"}
      */
     public static final String EVENT_NAME = "Event-Name";
+    /**
+     * {@code "Event-Subclass"}     *
+     */
+    public static final String EVENT_SUBCLASS = "Event-Subclass";
     /**
      * {@code "Event-Date-Local"}
      */
@@ -90,7 +86,8 @@ public class EslEventHeaderNames {
      */
     public static final String JOB_UUID = "Job-UUID";
 
-    private EslEventHeaderNames() {
+    private EslEventHeaderNames()
+    {
         /* private class */
     }
 }

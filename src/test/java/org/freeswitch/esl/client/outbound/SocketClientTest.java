@@ -15,9 +15,10 @@
  */
 package org.freeswitch.esl.client.outbound;
 
-//import org.freeswitch.esl.client.outbound.example.SimpleHangupPipelineFactory;
-import org.freeswitch.esl.client.outbound.example.SimpleHangupPipelineFactory;
+import org.freeswitch.esl.client.example.SimpleHangupPipelineFactory;
 import org.junit.Test;
+
+import java.util.logging.Logger;
 //import org.slf4j.Logger;
 //import org.slf4j.LoggerFactory;
 
@@ -26,37 +27,40 @@ import org.junit.Test;
  * any result, configure a FreeSWITCH installation with an extension something like
  * the following:
  * <pre>
- &lt;extension&gt;
- &lt;condition field="destination_number" expresssion="444"&gt;
- &lt;action application="socket" data="192.168.100.88:8084 async full"/&gt;
- &lt;/condition&gt;
- &lt;/extension&gt;
+ * &lt;extension&gt;
+ * &lt;condition field="destination_number" expresssion="444"&gt;
+ * &lt;action application="socket" data="192.168.100.88:8084 async full"/&gt;
+ * &lt;/condition&gt;
+ * &lt;/extension&gt;
  * <pre>
  * Replace the ip address with the host that FreeSWITCH sees that you are running the test on, perhaps
  * localhost.
  * <p/>
  * Run the test, you have 45 seconds to make a call to extension 444 and observe the logs.
  *
- * @author  david varnes
+ * @author david varnes
  */
-public class SocketClientTest
-{
-//    private final Logger log = LoggerFactory.getLogger( this.getClass() );
+public class SocketClientTest {
+    private final Logger log = Logger.getLogger(String.valueOf(this.getClass()));
 
     /*
      *  Example usage of an 'outbound' socket client.  Of course an application developer would need to
      *  create their own implementation of a handler and pipeline factory, and invoke the SocketClient.
      *
      */
-//    @Test
-//    public void run_client() throws InterruptedException
-//    {
-//        System.out.println( "Test starting ..." );
-//        SocketClient client = new SocketClient(8084, new SimpleHangupPipelineFactory());
-//        client.start();
-//        Thread.sleep( 45000 );
-//        client.stop();
-//        log.info( "Test ended" );
-//    }
+    @Test
+    public void run_client() throws InterruptedException {
+        log.info("Test starting ...");
+
+        SocketClient client = new SocketClient(8084, new SimpleHangupPipelineFactory());
+
+        client.start();
+
+        Thread.sleep(45000);
+
+        client.stop();
+
+        log.info("Test ended");
+    }
 
 }

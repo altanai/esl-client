@@ -1,4 +1,3 @@
-
 package org.freeswitch.esl.client.inbound;
 
 /*
@@ -17,13 +16,15 @@ package org.freeswitch.esl.client.inbound;
  * limitations under the License.
  */
 
-import io.netty.channel.ChannelHandlerContext;
 import org.freeswitch.esl.client.internal.AbstractEslClientHandler;
-import org.freeswitch.esl.client.internal.Context;
-import org.freeswitch.esl.client.internal.debug.ExecutionHandler;
+import org.freeswitch.esl.client.internal.IEslProtocolListener;
 import org.freeswitch.esl.client.transport.CommandResponse;
 import org.freeswitch.esl.client.transport.event.EslEvent;
 import org.freeswitch.esl.client.transport.message.EslHeaders;
+import org.freeswitch.esl.client.transport.message.EslMessage;
+import org.jboss.netty.channel.ChannelHandlerContext;
+import org.jboss.netty.handler.execution.ExecutionHandler;
+import org.jboss.netty.channel.ExceptionEvent;
 
 /**
  * End users of the inbound {@link Client} should not need to use this class.
@@ -51,27 +52,42 @@ class InboundClientHandler extends AbstractEslClientHandler {
         this.listener = listener;
     }
 
-    @Override
+    //    @Override
+//    protected void handleEslEvent(ChannelHandlerContext ctx, EslEvent event) {
+//        System.out.println("[InboundClientHandler] Received event: [{}]"+ event);
+//        listener.eventReceived(new Context(ctx.channel(), this), event);
+//    }
     protected void handleEslEvent(ChannelHandlerContext ctx, EslEvent event) {
-        System.out.println("[InboundClientHandler] Received event: [{}]"+ event);
-        listener.eventReceived(new Context(ctx.channel(), this), event);
+        System.out.println("[InboundClientHandler] Received event: [{}]" + event);
+        listener.eventReceived(event);
     }
 
     @Override
     protected void handleAuthRequest(ChannelHandlerContext ctx) {
-        System.out.println("[InboundClientHandler] Auth requested, sending [auth {}]"+ "*****");
-
-        sendApiSingleLineCommand(ctx.channel(), "auth " + password)
-                .thenAccept(response -> {
-                    System.out.println("[InboundClientHandler] Auth response [{}]"+ response);
-                    if (response.getContentType().equals(EslHeaders.Value.COMMAND_REPLY)) {
-                        final CommandResponse commandResponse = new CommandResponse("auth " + password, response);
-                        listener.authResponseReceived(commandResponse);
-                    } else {
-                        System.out.println("[InboundClientHandler] Bad auth response message [{}]"+ response);
-                        throw new IllegalStateException("Incorrect auth response");
-                    }
-                });
+        System.out.println("[InboundClientHandler] Auth requested, sending [auth {}]" + "*****");
+        EslMessage response = sendSyncSingleLineCommand( ctx.getChannel(), "auth " + password );
+        System.out.println("[InboundClientHandler]Auth response [{}]"+ response );
+        if ( response.getContentType().equals( EslHeaders.Value.COMMAND_REPLY ) )
+        {
+            CommandResponse commandResponse = new CommandResponse( "auth " + password, response );
+            listener.authResponseReceived( commandResponse );
+        }
+        else
+        {
+            System.out.println("[InboundClientHandler] Bad auth response message [{}]"+ response );
+            throw new IllegalStateException( "Incorrect auth response" );
+        }
+//        sendApiSingleLineCommand(ctx.channel(), "auth " + password)
+//                .thenAccept(response -> {
+//                    System.out.println("[InboundClientHandler] Auth response [{}]" + response);
+//                    if (response.getContentType().equals(EslHeaders.Value.COMMAND_REPLY)) {
+//                        final CommandResponse commandResponse = new CommandResponse("auth " + password, response);
+//                        listener.authResponseReceived(commandResponse);
+//                    } else {
+//                        System.out.println("[InboundClientHandler] Bad auth response message [{}]" + response);
+//                        throw new IllegalStateException("Incorrect auth response");
+//                    }
+//                });
     }
 
     @Override
@@ -80,4 +96,13 @@ class InboundClientHandler extends AbstractEslClientHandler {
         listener.disconnected();
     }
 
+    @Override
+    public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent e) throws Exception {
+        if ("WAIT_FOR_ESL_RESPONSE_TIMEOUT".equals(e.getCause().getMessage())) {
+            throw new RuntimeException("WAIT_FOR_ESL_RESPONSE_TIMEOUT");
+        } else {
+            System.out.println(e.getCause().getMessage());
+        }
+
+    }
 }

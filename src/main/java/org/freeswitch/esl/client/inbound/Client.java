@@ -1,5 +1,3 @@
-package org.freeswitch.esl.client.inbound;
-
 /*
  * Copyright 2010 david varnes.
  *
@@ -15,52 +13,74 @@ package org.freeswitch.esl.client.inbound;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.freeswitch.esl.client.inbound;
 
+import java.net.InetSocketAddress;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Iterator;
 
-import com.google.common.base.Throwables;
-import io.netty.bootstrap.Bootstrap;
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelOption;
-import io.netty.channel.EventLoopGroup;
-import io.netty.channel.nio.NioEventLoopGroup;
-import io.netty.channel.socket.nio.NioSocketChannel;
-import org.freeswitch.esl.client.internal.Context;
-import org.freeswitch.esl.client.internal.IModEslApi;
+import org.freeswitch.esl.client.IEslEventListener;
+import org.freeswitch.esl.client.internal.IEslProtocolListener;
 import org.freeswitch.esl.client.transport.CommandResponse;
 import org.freeswitch.esl.client.transport.SendMsg;
 import org.freeswitch.esl.client.transport.event.EslEvent;
 import org.freeswitch.esl.client.transport.message.EslMessage;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.net.SocketAddress;
-import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
+import org.jboss.netty.bootstrap.ClientBootstrap;
+import org.jboss.netty.channel.Channel;
+import org.jboss.netty.channel.ChannelFuture;
+import org.jboss.netty.channel.ExceptionEvent;
+import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
+//import org.slf4j.Logger;
+//import org.slf4j.LoggerFactory;
 
 /**
  * Entry point to connect to a running FreeSWITCH Event Socket Library module, as a client.
- * <p/>
+ * <p>
  * This class provides what the FreeSWITCH documentation refers to as an 'Inbound' connection
  * to the Event Socket module. That is, with reference to the socket listening on the FreeSWITCH
  * server, this client occurs as an inbound connection to the server.
- * <p/>
+ * <p>
  * See <a href="http://wiki.freeswitch.org/wiki/Mod_event_socket">http://wiki.freeswitch.org/wiki/Mod_event_socket</a>
+ *
+ * @author david varnes
  */
-public class Client implements IModEslApi {
+public class Client {
+//    private final Logger log = LoggerFactory.getLogger(this.getClass());
 
-    private final Logger log = LoggerFactory.getLogger(this.getClass());
-    private final List<IEslEventListener> eventListeners = new CopyOnWriteArrayList<>();
+    private final List<IEslEventListener> eventListeners = new CopyOnWriteArrayList<IEslEventListener>();
+    private final Executor eventListenerExecutor = Executors.newSingleThreadExecutor(
+            new ThreadFactory() {
+                final AtomicInteger threadNumber = new AtomicInteger(1);
+
+                public Thread newThread(Runnable r) {
+                    return new Thread(r, "EslEventNotifier-" + threadNumber.getAndIncrement());
+                }
+            });
+    private final Executor backgroundJobListenerExecutor = Executors.newSingleThreadExecutor(
+            new ThreadFactory() {
+                final AtomicInteger threadNumber = new AtomicInteger(1);
+
+                public Thread newThread(Runnable r) {
+                    return new Thread(r, "EslBackgroundJobNotifier-" + threadNumber.getAndIncrement());
+                }
+            });
+
     private final AtomicBoolean authenticatorResponded = new AtomicBoolean(false);
-    private final ConcurrentHashMap<String, CompletableFuture<EslEvent>> backgroundJobs =
-            new ConcurrentHashMap<>();
-
     private boolean authenticated;
     private CommandResponse authenticationResponse;
-    private Optional<Context> clientContext = Optional.empty();
-    private ExecutorService callbackExecutor = Executors.newSingleThreadExecutor();
+    private Channel channel;
+
+    public boolean canSend() {
+        return channel != null && channel.isConnected() && authenticated;
+    }
 
     public void addEventListener(IEslEventListener listener) {
         if (listener != null) {
@@ -68,71 +88,53 @@ public class Client implements IModEslApi {
         }
     }
 
-    @Override
-    public boolean canSend() {
-        return clientContext.isPresent()
-                && clientContext.get().canSend()
-                && authenticated;
-    }
-
-    private void checkConnected() {
-        if (!canSend()) {
-            throw new IllegalStateException("Not connected to FreeSWITCH Event Socket");
-        }
-    }
-
-    public void setCallbackExecutor(ExecutorService callbackExecutor) {
-        this.callbackExecutor = callbackExecutor;
-    }
-
     /**
      * Attempt to establish an authenticated connection to the nominated FreeSWITCH ESL server socket.
      * This call will block, waiting for an authentication handshake to occur, or timeout after the
      * supplied number of seconds.
      *
-     * @param clientAddress  a SocketAddress representing the endpoint to connect to
+     * @param host           can be either ip address or hostname
+     * @param port           tcp port that server socket is listening on (set in event_socket_conf.xml)
      * @param password       server event socket is expecting (set in event_socket_conf.xml)
      * @param timeoutSeconds number of seconds to wait for the server socket before aborting
      */
-    public void connect(SocketAddress clientAddress, String password, int timeoutSeconds) throws InboundConnectionFailure {
+    public void connect(String host, int port, String password, int timeoutSeconds) throws InboundConnectionFailure {
         // If already connected, disconnect first
         if (canSend()) {
             close();
         }
 
-//        log.info("Connecting to {} ...", clientAddress);
-        System.out.println("Connecting to {} ..."+ clientAddress);
-        EventLoopGroup workerGroup = new NioEventLoopGroup();
-
         // Configure this client
-        Bootstrap bootstrap = new Bootstrap()
-                .group(workerGroup)
-                .channel(NioSocketChannel.class)
-                .option(ChannelOption.SO_KEEPALIVE, true);
+        ClientBootstrap bootstrap = new ClientBootstrap(
+                new NioClientSocketChannelFactory(
+                        Executors.newCachedThreadPool(),
+                        Executors.newCachedThreadPool()));
 
         // Add ESL handler and factory
         InboundClientHandler handler = new InboundClientHandler(password, protocolListener);
-        bootstrap.handler(new InboundChannelInitializer(handler));
+        bootstrap.setPipelineFactory(new InboundPipelineFactory(handler));
 
         // Attempt connection
-        ChannelFuture future = bootstrap.connect(clientAddress);
+        ChannelFuture future = bootstrap.connect(new InetSocketAddress(host, port));
 
         // Wait till attempt succeeds, fails or timeouts
         if (!future.awaitUninterruptibly(timeoutSeconds, TimeUnit.SECONDS)) {
-            throw new InboundConnectionFailure("Timeout connecting to " + clientAddress);
+            throw new InboundConnectionFailure("Timeout connecting to " + host + ":" + port);
         }
-        // Did not timeout
-        final Channel channel = future.channel();
+
+        // Did not timeout 
+        channel = future.getChannel();
+
         // But may have failed anyway
         if (!future.isSuccess()) {
-            System.out.println("Failed to connect to [{}]"+ clientAddress+" "+ future.cause());
+            System.out.println("[Client] Failed to connect to [{}:{}]"+ host+ " "+ port);
+            System.out.println("[Client]   * reason: {}"+ future.getCause());
 
-            workerGroup.shutdownGracefully();
+            channel = null;
+            bootstrap.releaseExternalResources();
 
-            throw new InboundConnectionFailure("Could not connect to " + clientAddress, future.cause());
+            throw new InboundConnectionFailure("Could not connect to " + host + ":" + port, future.getCause());
         }
-
-        System.out.println("Connected to {}"+ clientAddress);
 
         //  Wait for the authentication handshake to call back
         while (!authenticatorResponded.get()) {
@@ -143,13 +145,9 @@ public class Client implements IModEslApi {
             }
         }
 
-        this.clientContext = Optional.of(new Context(channel, handler));
-
         if (!authenticated) {
             throw new InboundConnectionFailure("Authentication failed: " + authenticationResponse.getReplyText());
         }
-
-        System.out.println("Authenticated");
     }
 
     /**
@@ -162,10 +160,23 @@ public class Client implements IModEslApi {
      * @param arg     command arguments
      * @return an {@link EslMessage} containing command results
      */
-    @Override
-    public EslMessage sendApiCommand(String command, String arg) {
+    public EslMessage sendSyncApiCommand(String command, String arg) {
         checkConnected();
-        return clientContext.get().sendApiCommand(command, arg);
+
+        InboundClientHandler handler = (InboundClientHandler) channel.getPipeline().getLast();
+        StringBuilder sb = new StringBuilder();
+
+        if (command != null && !command.isEmpty()) {
+            sb.append("api ");
+            sb.append(command);
+        }
+
+        if (arg != null && !arg.isEmpty()) {
+            sb.append(' ');
+            sb.append(arg);
+        }
+
+        return handler.sendSyncSingleLineCommand(channel, sb.toString());
     }
 
     /**
@@ -179,10 +190,23 @@ public class Client implements IModEslApi {
      * @param arg     command arguments
      * @return String Job-UUID that the server will tag result event with.
      */
-    @Override
-    public CompletableFuture<EslEvent> sendBackgroundApiCommand(String command, String arg) {
+    public String sendAsyncApiCommand(String command, String arg) {
         checkConnected();
-        return clientContext.get().sendBackgroundApiCommand(command, arg);
+
+        InboundClientHandler handler = (InboundClientHandler) channel.getPipeline().getLast();
+        StringBuilder sb = new StringBuilder();
+
+        if (command != null && !command.isEmpty()) {
+            sb.append("bgapi ");
+            sb.append(command);
+        }
+
+        if (arg != null && !arg.isEmpty()) {
+            sb.append(' ');
+            sb.append(arg);
+        }
+
+        return handler.sendAsyncCommand(channel, sb.toString());
     }
 
     /**
@@ -202,10 +226,29 @@ public class Client implements IModEslApi {
      * @param events { all | space separated list of events }
      * @return a {@link CommandResponse} with the server's response.
      */
-    @Override
-    public CommandResponse setEventSubscriptions(EventFormat format, String events) {
+    public CommandResponse setEventSubscriptions(String format, String events) {
+        // temporary hack
+        if (!format.equals("plain")) {
+            throw new IllegalStateException("Only 'plain' event format is supported at present");
+        }
+
         checkConnected();
-        return clientContext.get().setEventSubscriptions(format, events);
+        InboundClientHandler handler = (InboundClientHandler) channel.getPipeline().getLast();
+        StringBuilder sb = new StringBuilder();
+
+        if (format != null && !format.isEmpty()) {
+            sb.append("event ");
+            sb.append(format);
+        }
+
+        if (events != null && !events.isEmpty()) {
+            sb.append(' ');
+            sb.append(events);
+        }
+
+        EslMessage response = handler.sendSyncSingleLineCommand(channel, sb.toString());
+
+        return new CommandResponse(sb.toString(), response);
     }
 
     /**
@@ -213,10 +256,13 @@ public class Client implements IModEslApi {
      *
      * @return a {@link CommandResponse} with the server's response.
      */
-    @Override
     public CommandResponse cancelEventSubscriptions() {
         checkConnected();
-        return clientContext.get().cancelEventSubscriptions();
+
+        InboundClientHandler handler = (InboundClientHandler) channel.getPipeline().getLast();
+        EslMessage response = handler.sendSyncSingleLineCommand(channel, "noevents");
+
+        return new CommandResponse("noevents", response);
     }
 
     /**
@@ -239,23 +285,53 @@ public class Client implements IModEslApi {
      * @param valueToFilter the value to match
      * @return a {@link CommandResponse} with the server's response.
      */
-    @Override
     public CommandResponse addEventFilter(String eventHeader, String valueToFilter) {
         checkConnected();
-        return clientContext.get().addEventFilter(eventHeader, valueToFilter);
+
+        InboundClientHandler handler = (InboundClientHandler) channel.getPipeline().getLast();
+        StringBuilder sb = new StringBuilder();
+
+        if (eventHeader != null && !eventHeader.isEmpty()) {
+            sb.append("filter ");
+            sb.append(eventHeader);
+        }
+
+        if (valueToFilter != null && !valueToFilter.isEmpty()) {
+            sb.append(' ');
+            sb.append(valueToFilter);
+        }
+
+        EslMessage response = handler.sendSyncSingleLineCommand(channel, sb.toString());
+
+        return new CommandResponse(sb.toString(), response);
     }
 
     /**
      * Delete an event filter from the current set of event filters on this connection.  See
+     * {@link Client.addEventFilter}
      *
      * @param eventHeader   to remove
      * @param valueToFilter to remove
      * @return a {@link CommandResponse} with the server's response.
      */
-    @Override
     public CommandResponse deleteEventFilter(String eventHeader, String valueToFilter) {
         checkConnected();
-        return clientContext.get().deleteEventFilter(eventHeader, valueToFilter);
+
+        InboundClientHandler handler = (InboundClientHandler) channel.getPipeline().getLast();
+        StringBuilder sb = new StringBuilder();
+
+        if (eventHeader != null && !eventHeader.isEmpty()) {
+            sb.append("filter delete ");
+            sb.append(eventHeader);
+        }
+
+        if (valueToFilter != null && !valueToFilter.isEmpty()) {
+            sb.append(' ');
+            sb.append(valueToFilter);
+        }
+        EslMessage response = handler.sendSyncSingleLineCommand(channel, sb.toString());
+
+        return new CommandResponse(sb.toString(), response);
     }
 
     /**
@@ -265,10 +341,13 @@ public class Client implements IModEslApi {
      * @param sendMsg a {@link SendMsg} with call UUID
      * @return a {@link CommandResponse} with the server's response.
      */
-    @Override
     public CommandResponse sendMessage(SendMsg sendMsg) {
         checkConnected();
-        return clientContext.get().sendMessage(sendMsg);
+
+        InboundClientHandler handler = (InboundClientHandler) channel.getPipeline().getLast();
+        EslMessage response = handler.sendSyncMultiLineCommand(channel, sendMsg.getMsgLines());
+
+        return new CommandResponse(sendMsg.toString(), response);
     }
 
     /**
@@ -277,10 +356,19 @@ public class Client implements IModEslApi {
      * @param level using the same values as in console.conf
      * @return a {@link CommandResponse} with the server's response.
      */
-    @Override
-    public CommandResponse setLoggingLevel(LoggingLevel level) {
+    public CommandResponse setLoggingLevel(String level) {
         checkConnected();
-        return clientContext.get().setLoggingLevel(level);
+
+        InboundClientHandler handler = (InboundClientHandler) channel.getPipeline().getLast();
+        StringBuilder sb = new StringBuilder();
+
+        if (level != null && !level.isEmpty()) {
+            sb.append("log ");
+            sb.append(level);
+        }
+        EslMessage response = handler.sendSyncSingleLineCommand(channel, sb.toString());
+
+        return new CommandResponse(sb.toString(), response);
     }
 
     /**
@@ -288,10 +376,13 @@ public class Client implements IModEslApi {
      *
      * @return a {@link CommandResponse} with the server's response.
      */
-    @Override
     public CommandResponse cancelLogging() {
         checkConnected();
-        return clientContext.get().cancelLogging();
+
+        InboundClientHandler handler = (InboundClientHandler) channel.getPipeline().getLast();
+        EslMessage response = handler.sendSyncSingleLineCommand(channel, "nolog");
+
+        return new CommandResponse("nolog", response);
     }
 
     /**
@@ -302,25 +393,16 @@ public class Client implements IModEslApi {
     public CommandResponse close() {
         checkConnected();
 
-        try {
-            if (clientContext.isPresent()) {
-                return new CommandResponse("exit", clientContext.get().sendCommand("exit"));
-            } else {
-                throw new IllegalStateException("not connected/authenticated");
-            }
-        } catch (Throwable t) {
-            throw Throwables.propagate(t);
-        }
+        InboundClientHandler handler = (InboundClientHandler) channel.getPipeline().getLast();
+        EslMessage response = handler.sendSyncSingleLineCommand(channel, "exit");
 
-
+        return new CommandResponse("exit", response);
     }
 
     /*
      *  Internal observer of the ESL protocol
      */
     private final IEslProtocolListener protocolListener = new IEslProtocolListener() {
-
-        @Override
         public void authResponseReceived(CommandResponse response) {
             authenticatorResponded.set(true);
             authenticated = response.isOk();
@@ -328,18 +410,156 @@ public class Client implements IModEslApi {
             System.out.println("Auth response success={}, message=[{}]"+ authenticated+ " "+ response.getReplyText());
         }
 
-        @Override
-        public void eventReceived(final Context ctx, final EslEvent event) {
-            System.out.println("Event received [{}]"+ event);
-            for (final IEslEventListener listener : eventListeners) {
-                callbackExecutor.execute(() -> listener.onEslEvent(ctx, event));
+        public void eventReceived(final EslEvent event) {
+            System.out.println("Event received [{}]"+ " "+ event);
+
+            /*
+             *  Notify listeners in a different thread in order to:
+             *    - not to block the IO threads with potentially long-running listeners
+             *    - generally be defensive running other people's code
+             *  Use a different worker thread pool for async job results than for event driven
+             *  events to keep the latency as low as possible.
+             */
+            if (event.getEventName().equals("BACKGROUND_JOB")) {
+                for (final IEslEventListener listener : eventListeners) {
+                    backgroundJobListenerExecutor.execute(new Runnable() {
+                        public void run() {
+                            try {
+                                listener.backgroundJobResultReceived(event);
+                            } catch (Throwable t) {
+                                System.out.println( "[SyncCallback] Error caught notifying listener of job result [" + event + ']'+ t);
+                            }
+                        }
+                    });
+                }
+            } else {
+                for (final IEslEventListener listener : eventListeners) {
+                    eventListenerExecutor.execute(new Runnable() {
+                        public void run() {
+                            try {
+                                /**
+                                 * Custom extra parsing to get conference Events for BigBlueButton / FreeSwitch intergration
+                                 */
+                                //FIXME: make the conference headers constants
+                                if (event.getEventSubclass().equals("conference::maintenance")) {
+                                    Map<String, String> eventHeaders = event.getEventHeaders();
+                                    String eventFunc = eventHeaders.get("Event-Calling-Function");
+                                    String uniqueId = eventHeaders.get("Caller-Unique-ID");
+                                    String confName = eventHeaders.get("Conference-Name");
+                                    String eventAction = eventHeaders.get("Action");
+                                    int confSize = Integer.parseInt(eventHeaders.get("Conference-Size"));
+                                    /**
+                                     StringBuilder sb = new StringBuilder("");
+                                     sb.append("\n");
+                                     for (Iterator it = eventHeaders.entrySet().iterator(); it.hasNext(); ) {
+                                     Map.Entry entry = (Map.Entry)it.next();
+                                     sb.append(entry.getKey());
+                                     sb.append(" => '");
+                                     sb.append(entry.getValue());
+                                     sb.append("'\n");
+                                     }
+
+                                     System.out.println("##### Received Event for " + confName);
+                                     System.out.println("##### " + sb.toString());
+                                     **/
+                                    if (eventFunc == null || eventAction == null) {
+                                        //Noop...
+                                    } else if (eventAction.equals("conference-create")) {
+                                        listener.conferenceEventAction(uniqueId, confName, confSize, eventAction, event);
+                                        return;
+                                    } else if (eventAction.equals("conference-destroy")) {
+                                        listener.conferenceEventAction(uniqueId, confName, confSize, eventAction, event);
+                                        return;
+                                    } else if (eventFunc.equals("conference_thread_run")) {
+                                        System.out.println("##### Client conference_thread_run");
+                                        listener.conferenceEventThreadRun(uniqueId, confName, confSize, event);
+                                        return;
+                                    } else if (eventFunc.equals("member_add_file_data")) {
+                                        System.out.println("##### Client member_add_file_data");
+                                        listener.conferenceEventPlayFile(uniqueId, confName, confSize, event);
+                                        return;
+                                    } else if (eventFunc.equals("conf_api_sub_transfer") || eventFunc.equals("conference_api_sub_transfer")) {
+                                        //Member transfered to another conf...
+                                        listener.conferenceEventTransfer(uniqueId, confName, confSize, event);
+                                        return;
+                                    } else if (eventFunc.equals("conference_add_member") || eventFunc.equals("conference_member_add")) {
+                                        System.out.println("##### Client conference_add_member");
+                                        listener.conferenceEventJoin(uniqueId, confName, confSize, event);
+                                        return;
+                                    } else if (eventFunc.equals("conference_del_member") || eventFunc.equals("conference_member_del")) {
+                                        System.out.println("##### Client conference_del_member");
+                                        listener.conferenceEventLeave(uniqueId, confName, confSize, event);
+                                        return;
+                                    } else if (eventFunc.equals("conf_api_sub_mute") || eventFunc.equals("conference_api_sub_mute")) {
+                                        listener.conferenceEventMute(uniqueId, confName, confSize, event);
+                                        return;
+                                    } else if (eventFunc.equals("conf_api_sub_unmute") || eventFunc.equals("conference_api_sub_unmute")) {
+                                        listener.conferenceEventUnMute(uniqueId, confName, confSize, event);
+                                        return;
+                                    } else if (eventFunc.equals("conference_record_thread_run")) {
+                                        System.out.println("##### Client conference_record_thread_run");
+                                        listener.conferenceEventRecord(uniqueId, confName, confSize, event);
+                                        return;
+                                    } else if (eventFunc.equals("conference_loop_input")) {
+                                        listener.conferenceEventAction(uniqueId, confName, confSize, eventAction, event);
+                                        return;
+                                    } else if (eventFunc.equals("stop_talking_handler")) {
+                                        listener.conferenceEventAction(uniqueId, confName, confSize, eventAction, event);
+                                        return;
+                                    } else {
+                                        /**
+                                         StringBuilder sb = new StringBuilder("");
+                                         sb.append("\n");
+                                         for (Iterator it = eventHeaders.entrySet().iterator(); it.hasNext(); ) {
+                                         Map.Entry entry = (Map.Entry)it.next();
+                                         sb.append(entry.getKey());
+                                         sb.append(" => '");
+                                         sb.append(entry.getValue());
+                                         sb.append("'\n");
+                                         }
+                                         log.info ("Unknown Conference Event [{}] [{}]", confName, sb.toString());
+                                         System.out.println("##### unhandled Event for " + confName);
+                                         System.out.println("##### " + sb.toString());
+                                         **/
+                                    }
+                                } else {
+                                    listener.eventReceived(event);
+                                }
+
+                            } catch (Throwable t) {
+                                System.out.println("[Client] Error caught notifying listener of event [" + event + ']'+ t);
+                            }
+                        }
+                    });
+                }
             }
         }
 
-        @Override
         public void disconnected() {
-            System.out.println("Disconnected ...");
+            System.out.println("[Client] Disconnected ..");
+        }
+
+        public void exceptionCaught(final ExceptionEvent e) {
+            System.out.println("[Client] exceptionCaught [{}]"+ e.getCause());
+
+            for (final IEslEventListener listener : eventListeners) {
+                eventListenerExecutor.execute(new Runnable() {
+                    public void run() {
+                        try {
+                            listener.exceptionCaught(e);
+                        } catch (Throwable t) {
+                            System.out.println("[Client] Error caught notifying listener of exception [" + e + ']'+ t);
+                        }
+                    }
+                });
+            }
+
         }
     };
 
+    private void checkConnected() {
+        if (!canSend()) {
+            throw new IllegalStateException("Not connected to FreeSWITCH Event Socket");
+        }
+    }
 }

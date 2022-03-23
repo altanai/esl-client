@@ -29,10 +29,10 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ReplayingDecoder;
 import io.netty.handler.codec.TooLongFrameException;
-import org.freeswitch.esl.client.transport.HeaderParser;
+import org.freeswitch.esl.client.internal.HeaderParser;
 import org.freeswitch.esl.client.transport.message.EslHeaders.Name;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+//import org.slf4j.Logger;
+//import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
@@ -66,7 +66,7 @@ public class EslFrameDecoder extends ReplayingDecoder<EslFrameDecoder.State> {
         READ_BODY,
     }
 
-    private final Logger log = LoggerFactory.getLogger(this.getClass());
+//    private final Logger log = LoggerFactory.getLogger(this.getClass());
     private final int maxHeaderSize;
     private EslMessage currentMessage;
     private boolean treatUnknownHeadersAsBody = false;
@@ -90,7 +90,7 @@ public class EslFrameDecoder extends ReplayingDecoder<EslFrameDecoder.State> {
     protected void decode(ChannelHandlerContext ctx, ByteBuf buffer, List<Object> out) throws Exception {
         State state = state();
 
-        log.trace("decode() : state [{}]", state);
+        System.out.println("decode() : state [{}]"+ state);
         switch (state) {
             case READ_HEADER:
                 if (currentMessage == null) {
@@ -103,7 +103,7 @@ public class EslFrameDecoder extends ReplayingDecoder<EslFrameDecoder.State> {
                 while (!reachedDoubleLF) {
                     // this will read or fail
                     String headerLine = readToLineFeedOrFail(buffer, maxHeaderSize);
-                    log.debug("read header line [{}]", headerLine);
+                    System.out.println("read header line [{}]"+ headerLine);
                     if (!headerLine.isEmpty()) {
                         // split the header line
                         String[] headerParts = HeaderParser.splitHeader(headerLine);
@@ -126,7 +126,7 @@ public class EslFrameDecoder extends ReplayingDecoder<EslFrameDecoder.State> {
                 // have read all headers - check for content-length
                 if (currentMessage.hasContentLength()) {
                     checkpoint(State.READ_BODY);
-                    log.debug("have content-length, decoding body ..");
+                    System.out.println("have content-length, decoding body ..");
                     //  force the next section
 
                     break;
@@ -147,11 +147,11 @@ public class EslFrameDecoder extends ReplayingDecoder<EslFrameDecoder.State> {
                  */
                 int contentLength = currentMessage.getContentLength();
                 ByteBuf bodyBytes = buffer.readBytes(contentLength);
-                log.debug("read [{}] body bytes", bodyBytes.writerIndex());
+                System.out.println("read [{}] body bytes"+ bodyBytes.writerIndex());
                 // most bodies are line based, so split on LF
                 while (bodyBytes.isReadable()) {
                     String bodyLine = readLine(bodyBytes, contentLength);
-                    log.debug("read body line [{}]", bodyLine);
+                    System.out.println("read body line [{}]"+ bodyLine);
                     currentMessage.addBodyLine(bodyLine);
                 }
 

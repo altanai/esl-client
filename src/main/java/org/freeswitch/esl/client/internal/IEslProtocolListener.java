@@ -14,21 +14,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.freeswitch.esl.client.inbound;
+package org.freeswitch.esl.client.internal;
 
-import org.freeswitch.esl.client.internal.Context;
+import org.freeswitch.esl.client.inbound.Client;
 import org.freeswitch.esl.client.transport.CommandResponse;
 import org.freeswitch.esl.client.transport.event.EslEvent;
+import org.jboss.netty.channel.ExceptionEvent;
 
 /**
  * End users of the {@link Client} should not need to use this class.
  * <p/>
  * Allow client implementations to observe events arriving from the server.
  */
-interface IEslProtocolListener {
+public interface IEslProtocolListener {
     void authResponseReceived(CommandResponse response);
 
-    void eventReceived(Context ctx, EslEvent event);
+    void eventReceived(EslEvent event);
 
     void disconnected();
+
+    void exceptionCaught(ExceptionEvent e);
 }
