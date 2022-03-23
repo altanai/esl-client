@@ -15,11 +15,9 @@ package com.ecovate.freeswitch.lb;
 
 import com.google.common.base.Throwables;
 import org.freeswitch.esl.client.inbound.Client;
-import org.freeswitch.esl.client.inbound.IEslEventListener;
+import org.freeswitch.esl.client.IEslEventListener;
 import org.freeswitch.esl.client.internal.IModEslApi.EventFormat;
 import org.freeswitch.esl.client.outbound.Context;
-import org.freeswitch.esl.client.outbound.IClientHandler;
-import org.freeswitch.esl.client.outbound.IClientHandlerFactory;
 import org.freeswitch.esl.client.outbound.SocketClient;
 import org.freeswitch.esl.client.transport.event.EslEvent;
 import org.slf4j.Logger;
@@ -29,49 +27,52 @@ import java.net.InetSocketAddress;
 
 public class FreeSwitchEventListener {
 
-  private static Logger logger = LoggerFactory.getLogger(FreeSwitchEventListener.class);
+    private static Logger logger = LoggerFactory.getLogger(FreeSwitchEventListener.class);
 
-  public static void main(String[] args) {
-    try {
+    public static void main(String[] args) {
+        try {
 
-      final Client inboudClient = new Client();
-      inboudClient.connect(new InetSocketAddress("localhost", 8021), "ClueCon", 10);
-      inboudClient.addEventListener(new IEslEventListener() {
-        @Override
-        public void onEslEvent(EslEvent eslEvent) {
+            final Client inboudClient = new Client();
+            inboudClient.connect(new InetSocketAddress("localhost", 8021), "ClueCon", 10);
+            inboudClient.addEventListener(new IEslEventListener() {
+                @Override
+                public void onEslEvent(EslEvent eslEvent) {
 
+                }
+            });
+            inboudClient.setEventSubscriptions(EventFormat.PLAIN, "all");
+
+            final SocketClient outboundServer = new SocketClient(
+                    new InetSocketAddress("localhost", 8084),
+                    new IClientHandlerFactory() {
+                        @Override
+                        public IClientHandler createClientHandler() {
+                            return new IClientHandler() {
+                                @Override
+                                public void handleEslEvent(Context context, EslEvent eslEvent) {
+                                }
+
+                                @Override
+                                public void onConnect(Context context, EslEvent eslEvent) {
+                                }
+                            };
+                        }
+                    });
+
+
+        } catch (Throwable t) {
+            Throwables.propagate(t);
         }
-      });
-      inboudClient.setEventSubscriptions(EventFormat.PLAIN, "all");
-
-      final SocketClient outboundServer = new SocketClient(
-        new InetSocketAddress("localhost", 8084),
-        new IClientHandlerFactory() {
-          @Override
-          public IClientHandler createClientHandler() {
-            return new IClientHandler() {
-              @Override
-              public void handleEslEvent(Context context, EslEvent eslEvent) {
-              }
-
-              @Override
-              public void onConnect(Context context, EslEvent eslEvent) {
-              }
-            };
-          }
-        });
-
-
-    } catch (Throwable t) {
-      Throwables.propagate(t);
     }
-  }
 
 }
 ```
-# Modified and adapted 
+# Modified and adapted
 
 - [Altanai](https://www.linkedin.com/in/altanai/)
+
+sources : https://github.com/bigbluebutton/bigbluebutton/tree/main/bbb-fsesl-client/src/main/java/org/freeswitch/esl 
+
 
 # Authors
 
