@@ -49,10 +49,10 @@ public class OutboundTest {
                             System.out.println(nameMapToString(eslEvent.getMessageHeaders(), eslEvent.getEventBodyLines()));
 
 
-                            //  System.out.println(eslEvent.getEventHeaders());
+                            // System.out.println(eslEvent.getEventHeaders());
                             // output in evenHeaders text file
 
-                            String calleeNumber = eslEvent.getEventHeaders().get("Caller-Callee-ID-Number");
+                            String calleeNumber = eslEvent.getEventHeaders().get("Channel-Destination-Number");
                             String callerNumber = eslEvent.getEventHeaders().get("Caller-Caller-ID-Number");
                             System.out.println("callerNumber：" + callerNumber + " , calleeNumber：" + calleeNumber);
 
@@ -73,14 +73,12 @@ public class OutboundTest {
 //                                exe.echo(); // sets up echo
 
                                 long call_start = new Date().getTime();
-                                System.out.println("Call Answered " + call_start);
+                                System.out.println("Call Answered at : " + call_start);
 
                                 exe.say("en", "123456", "number", "pronounced");
 
-//                                String digits = exe.playAndGetDigits(3,
-//                                        5, 10, 10 * 1000, "#", prompt,
-//                                        failed, "^\\d+", 10 * 1000);
-//
+//                                String digits = exe.playAndGetDigits(3, 5, 10, 10 * 1000, "#",
+//                                        prompt, failed, "^\\d+", 10 * 1000);
 //                                System.out.println("Digits collected: {}" + digits);
 
                                 // record
@@ -89,6 +87,9 @@ public class OutboundTest {
                                 System.out.println("Could not prompt for digits");
                                 e.printStackTrace();
                             } finally {
+                                long call_end = new Date().getTime();
+                                System.out.println("Call End at : " + call_end);
+
                                 try {
                                     System.out.println("hangup");
                                     exe.hangup(null);

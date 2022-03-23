@@ -41,7 +41,6 @@ public class Execute {
      */
     public void answer() throws ExecuteException {
         sendExeMesg("answer");
-
     }
 
     /**

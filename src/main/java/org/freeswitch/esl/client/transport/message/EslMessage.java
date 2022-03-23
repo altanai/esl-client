@@ -26,8 +26,6 @@
 package org.freeswitch.esl.client.transport.message;
 
 import org.freeswitch.esl.client.transport.message.EslHeaders.Name;
-//import org.slf4j.Logger;
-//import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.HashMap;

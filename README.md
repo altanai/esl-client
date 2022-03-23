@@ -6,8 +6,6 @@
 **esl-client** is a Java-based Event Socket Library for the
 [FreeSWITCH](https://freeswitch.org/) project.
 
-
-
 ## Example
 
 ```java
@@ -69,6 +67,21 @@ public class FreeSwitchEventListener {
 
 }
 ```
+
+## Maven 
+
+Install dependencies 
+
+    mvn install
+
+Execute 
+
+     mvn exec:java -Dexec.mainClass="org.freeswitch.esl.CallManager"
+
+## Docker 
+
+    sudo docker build -t freeswitchesl .
+
 # Modified and adapted 
 
 - [Altanai](https://www.linkedin.com/in/altanai/)
